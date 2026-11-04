@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Tareas MD</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        logis: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            900: '#7c2d12',
+                        },
+                        corp: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Flatpickr (Calendario) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .toast-enter { animation: slideIn 0.3s ease-out forwards; }
+        .toast-exit { animation: slideOut 0.3s ease-in forwards; }
+
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(100%); opacity: 0; }
+        }
+
+        /* Indicador de registros en el calendario */
+        .flatpickr-day.has-logs { position: relative; font-weight: bold; }
+        .flatpickr-day.has-logs::after {
+            content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+            width: 5px; height: 5px; background-color: #f97316; border-radius: 50%;
+        }
+        /* Ajustes del calendario para el Modo Oscuro */
+        html.dark .flatpickr-calendar { background: #1e293b; border-color: #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }
+        html.dark .flatpickr-day { color: #e2e8f0; }
+        html.dark .flatpickr-day.flatpickr-disabled, html.dark .flatpickr-day.flatpickr-disabled:hover { color: #475569; }
+        html.dark .flatpickr-day.prevMonthDay, html.dark .flatpickr-day.nextMonthDay { color: #64748b; }
+        html.dark .flatpickr-day:hover, html.dark .flatpickr-day:focus { background: #334155; border-color: #334155; }
+        html.dark .flatpickr-day.selected { background: #ea580c; border-color: #ea580c; color: #fff; }
+        html.dark .flatpickr-month { color: #f8fafc; fill: #f8fafc; }
+        html.dark .flatpickr-current-month .flatpickr-monthDropdown-months { background: #1e293b; color: #f8fafc; }
+        html.dark .flatpickr-weekday { color: #94a3b8; }
+        html.dark .flatpickr-calendar.arrowTop:before { border-bottom-color: #334155; }
+        html.dark .flatpickr-calendar.arrowTop:after { border-bottom-color: #1e293b; }
+        html.dark .flatpickr-calendar.arrowBottom:before { border-top-color: #334155; }
+        html.dark .flatpickr-calendar.arrowBottom:after { border-top-color: #1e293b; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-corp-900 dark:text-gray-200 transition-colors duration-200 min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-white dark:bg-corp-800 shadow-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-box-open text-logis-500 text-2xl"></i>
+                    <span class="font-bold text-xl tracking-tight text-gray-900 dark:text-white">Control Tareas<span class="text-logis-500 text-sm align-top ml-1">MD</span></span>
+                </div>
+                <div class="flex items-center space-x-1 sm:space-x-4">
+                    <button id="navThemeToggle" class="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition" title="Cambiar tema">
+                        <i id="themeIcon" class="fa-solid fa-moon text-lg"></i>
+                    </button>
+                    <button onclick="switchView('dashboard')" class="nav-btn active px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition" id="nav-dashboard">
+                        <i class="fa-solid fa-chart-pie mr-1"></i> <span class="hidden sm:inline">Dashboard</span>
+                    </button>
+                    <button onclick="switchView('log')" class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition" id="nav-log">
+                        <i class="fa-solid fa-clock mr-1"></i> <span class="hidden sm:inline">Registrar</span>
+                    </button>
+                    <button onclick="switchView('settings')" class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition" id="nav-settings">
+                        <i class="fa-solid fa-gear mr-1"></i> <span class="hidden sm:inline">Ajustes</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- DASHBOARD -->
+        <section id="view-dashboard" class="view-section">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                
+                <!-- Calendario Flatpickr -->
+                <div class="relative w-full sm:w-56 z-10">
+                    <i class="fa-solid fa-calendar-days absolute left-3 top-[11px] text-logis-500 dark:text-logis-400 z-10 pointer-events-none text-lg"></i>
+                    <input type="text" id="dashboardDatePicker" class="w-full pl-10 pr-4 py-2 bg-white dark:bg-corp-800 border border-gray-200 dark:border-gray-700 rounded-xl font-bold text-gray-800 dark:text-white shadow-sm cursor-pointer focus:outline-none focus:border-logis-500 focus:ring-2 focus:ring-logis-500 transition" placeholder="Seleccionar fecha...">
+                </div>
+                
+                <!-- Filtros Dropdown -->
+                <div class="w-full sm:w-48 z-10">
+                    <div class="relative">
+                        <i class="fa-solid fa-filter absolute left-3 top-[11px] text-gray-400 dark:text-gray-500 z-10 pointer-events-none text-sm"></i>
+                        <select id="chartFilterSelect" onchange="updateChartFilter(this.value)" class="w-full pl-9 pr-8 py-2 bg-white dark:bg-corp-800 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-800 dark:text-white shadow-sm cursor-pointer focus:outline-none focus:border-logis-500 focus:ring-2 focus:ring-logis-500 transition appearance-none">
+                            <option value="daily">Diario</option>
+                            <option value="weekly">Semanal</option>
+                            <option value="monthly">Mensual</option>
+                            <option value="3months">3 Meses</option>
+                            <option value="6months">6 Meses</option>
+                            <option value="1year">1 Año</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-[11px] text-gray-400 dark:text-gray-500 z-10 pointer-events-none text-sm"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mensaje Sin Datos -->
+            <p id="no-data-msg" class="text-center text-gray-500 dark:text-gray-400 mt-10 hidden bg-white dark:bg-corp-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                No hay datos registrados para este periodo.
+            </p>
+
+            <!-- Gráficos -->
+            <div id="charts-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Evolución en el tiempo -->
+                <div class="lg:col-span-2 bg-white dark:bg-corp-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Evolución del Tiempo (Horas)</h3>
+                        <span class="bg-logis-100 text-logis-600 dark:bg-logis-900/50 dark:text-logis-400 font-bold px-3 py-1 rounded-full text-xs border border-logis-200 dark:border-logis-800">
+                            Total periodo: <span id="total-hours-badge">0</span>h
+                        </span>
+                    </div>
+                    <div class="relative h-[250px] sm:h-[300px] w-full">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Porcentajes (Donut) -->
+                <div class="bg-white dark:bg-corp-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h3 class="text-sm font-semibold mb-4 text-gray-700 dark:text-gray-300">Distribución por Sección (%)</h3>
+                    <div class="relative h-[250px] sm:h-[300px] w-full flex justify-center">
+                        <canvas id="percentChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Tareas detalladas -->
+                <div class="lg:col-span-3 bg-white dark:bg-corp-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h3 class="text-sm font-semibold mb-4 text-gray-700 dark:text-gray-300">Detalle por Tareas</h3>
+                    <div class="relative min-h-[300px] w-full mb-8">
+                        <canvas id="tasksChart"></canvas>
+                    </div>
+
+                    <!-- Tabla Dinámica -->
+                    <div class="mt-6 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-800/80 dark:text-gray-400">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3">Tarea</th>
+                                    <th scope="col" class="px-4 py-3 text-right">Horas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dynamic-table-body" class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                                <!-- Generado por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- REGISTRAR HORAS -->
+        <section id="view-log" class="view-section hidden max-w-2xl mx-auto">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Registrar Tiempo</h2>
+            <form id="logForm" class="bg-white dark:bg-corp-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha</label>
+                    <input type="date" id="logDate" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2.5 outline-none transition focus:border-logis-500 focus:ring-1 focus:ring-logis-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sección</label>
+                    <select id="logSection" onchange="renderTaskOptions()" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2.5 outline-none transition focus:border-logis-500 focus:ring-1 focus:ring-logis-500">
+                        <option value="">Selecciona una sección...</option>
+                        <option value="PAQUETERIA">Paquetería</option>
+                        <option value="CONFECCIÓN">Confección</option>
+                        <option value="EXPEDICIONES">Expediciones</option>
+                        <option value="MUESTRAS">Muestras</option>
+                        <option value="DEVOLUCIONES">Devoluciones</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tarea</label>
+                    <select id="logTask" required disabled class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2.5 outline-none transition disabled:opacity-50 focus:border-logis-500 focus:ring-1 focus:ring-logis-500">
+                        <option value="">Primero selecciona una sección</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Horas Invertidas</label>
+                    <input type="number" id="logHours" step="0.25" min="0.25" placeholder="Ej: 4.5" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2.5 outline-none transition focus:border-logis-500 focus:ring-1 focus:ring-logis-500">
+                </div>
+                <button type="submit" class="w-full bg-logis-500 hover:bg-logis-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition transform active:scale-[0.98]">
+                    Guardar Registro
+                </button>
+            </form>
+        </section>
+
+        <!-- AJUSTES -->
+        <section id="view-settings" class="view-section hidden">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Ajustes y Gestión</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Panel Gestión de Tareas -->
+                <div class="bg-white dark:bg-corp-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Gestión de Tareas</h3>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selecciona Sección</label>
+                        <select id="manageSection" onchange="renderManageTasks()" class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2.5 outline-none transition">
+                            <option value="PAQUETERIA">Paquetería</option>
+                            <option value="CONFECCIÓN">Confección</option>
+                            <option value="EXPEDICIONES">Expediciones</option>
+                            <option value="MUESTRAS">Muestras</option>
+                            <option value="DEVOLUCIONES">Devoluciones</option>
+                        </select>
+                    </div>
+                    <div id="tasksListContainer" class="space-y-3 max-h-[300px] overflow-y-auto pr-2 mb-4"></div>
+                    <form id="addTaskForm" class="flex gap-2">
+                        <input type="text" id="newTaskName" placeholder="Nueva tarea..." required class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2 outline-none transition">
+                        <button type="submit" class="bg-gray-800 dark:bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                            <i class="fa-solid fa-plus"></i> Añadir
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Panel Sistema y Backup -->
+                <div class="bg-white dark:bg-corp-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 h-fit">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">Copias de Seguridad</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Guarda tus datos en un archivo para no perderlos si se limpia la caché del navegador.</p>
+                    <div class="flex flex-col gap-3">
+                        <button onclick="exportData()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-download"></i> Exportar (Crear Copia)
+                        </button>
+                        <div class="relative">
+                            <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
+                            <button onclick="document.getElementById('importFile').click()" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-upload"></i> Restaurar (Cargar Copia)
+                            </button>
+                        </div>
+                        <button onclick="clearAllData()" class="w-full border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-medium py-2 px-4 rounded-lg transition mt-4">
+                            Borrar Todos los Datos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <script>
+        const APP_VERSION = '1.2';
+        
+        const defaultData = {
+            tasks: { "PAQUETERIA": [], "CONFECCIÓN": [], "EXPEDICIONES": [], "MUESTRAS": [], "DEVOLUCIONES": [] },
+            logs: [],
+            theme: 'light'
+        };
+
+        const specificTasks = {
+            "PAQUETERIA": ["Destinos", "Inducción", "Evacuar"],
+            "CONFECCIÓN": ["Encajar", "Descargar camión confección", "Cadena", "Pick", "Roturas", "Msr", "Limpieza", "Inducción", "Encajado", "Devoluciones carga camión", "Bloques en cadena", "Rechazo"],
+            "EXPEDICIONES": ["Rampas", "Planchas", "Incidencias", "Perfumería", "Cargas"],
+            "MUESTRAS": ["Gestión de muestras", "Preparación"],
+            "DEVOLUCIONES": ["Gestión devoluciones"]
+        };
+
+        let appData = loadData();
+        let fpInstance = null;
+        let baseDate = new Date();
+        let currentFilter = 'daily';
+
+        let timelineChartInstance = null;
+        let percentChartInstance = null;
+        let tasksChartInstance = null;
+
+        const sectionColors = {
+            "PAQUETERIA": 'rgba(249, 115, 22, 0.85)',
+            "CONFECCIÓN": 'rgba(59, 130, 246, 0.85)',
+            "EXPEDICIONES": 'rgba(16, 185, 129, 0.85)',
+            "MUESTRAS": 'rgba(168, 85, 247, 0.85)',
+            "DEVOLUCIONES": 'rgba(239, 68, 68, 0.85)'
+        };
+
+        function generateId() { return Math.random().toString(36).substr(2, 9) + Date.now().toString(36); }
+
+        function loadData() {
+            let data;
+            try {
+                const stored = localStorage.getItem('logisTrackData');
+                data = (stored && stored.trim() !== '') ? JSON.parse(stored) : JSON.parse(JSON.stringify(defaultData));
+            } catch (e) {
+                data = JSON.parse(JSON.stringify(defaultData));
+            }
+
+            for (let sec in specificTasks) {
+                if (!data.tasks[sec]) data.tasks[sec] = [];
+                specificTasks[sec].forEach(taskName => {
+                    if (!data.tasks[sec].find(t => t.name === taskName)) {
+                        data.tasks[sec].push({ id: generateId(), name: taskName });
+                    }
+                });
+            }
+            return data;
+        }
+
+        function saveData() { localStorage.setItem('logisTrackData', JSON.stringify(appData)); }
+
+        function switchView(viewName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('bg-logis-100', 'text-logis-600', 'dark:bg-logis-900', 'dark:text-logis-400');
+            });
+
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            document.getElementById(`nav-${viewName}`).classList.add('bg-logis-100', 'text-logis-600', 'dark:bg-logis-900', 'dark:text-logis-400');
+
+            if (viewName === 'dashboard') renderChart();
+            else if (viewName === 'settings') renderManageTasks();
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let bgClass = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-gray-800');
+            toast.className = `toast-enter flex items-center justify-between p-4 rounded-lg shadow-lg text-white ${bgClass} min-w-[250px]`;
+            toast.innerHTML = `<span class="text-sm font-medium">${message}</span><button onclick="this.parentElement.remove()" class="ml-4 opacity-75 hover:opacity-100 focus:outline-none"><i class="fa-solid fa-xmark"></i></button>`;
+            container.appendChild(toast);
+            setTimeout(() => { if (container.contains(toast)) { toast.classList.replace('toast-enter', 'toast-exit'); setTimeout(() => toast.remove(), 300); } }, 3000);
+        }
+
+        const navThemeToggleBtn = document.getElementById('navThemeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                if (themeIcon) { themeIcon.classList.remove('fa-moon'); themeIcon.classList.add('fa-sun'); }
+            } else {
+                document.documentElement.classList.remove('dark');
+                if (themeIcon) { themeIcon.classList.remove('fa-sun'); themeIcon.classList.add('fa-moon'); }
+            }
+            appData.theme = theme;
+            saveData();
+            if (typeof timelineChartInstance !== 'undefined' && timelineChartInstance) renderChart(); 
+        }
+
+        navThemeToggleBtn.addEventListener('click', () => applyTheme(appData.theme === 'dark' ? 'light' : 'dark'));
+
+        document.getElementById('logDate').value = new Date().toISOString().split('T')[0];
+
+        function renderTaskOptions() {
+            const section = document.getElementById('logSection').value;
+            const taskSelect = document.getElementById('logTask');
+            taskSelect.innerHTML = '<option value="">Selecciona una tarea...</option>';
+            if (!section) { taskSelect.disabled = true; return; }
+            taskSelect.disabled = false;
+            (appData.tasks[section] || []).forEach(task => {
+                const opt = document.createElement('option');
+                opt.value = task.id; opt.textContent = task.name;
+                taskSelect.appendChild(opt);
+            });
+        }
+
+        document.getElementById('logForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const date = document.getElementById('logDate').value;
+            const section = document.getElementById('logSection').value;
+            const taskId = document.getElementById('logTask').value;
+            const hours = parseFloat(document.getElementById('logHours').value);
+
+            if (!date || !section || !taskId || !hours) { showToast('Rellena todos los campos.', 'error'); return; }
+
+            appData.logs.push({ id: generateId(), date: date, section: section, taskId: taskId, hours: hours });
+            saveData();
+            if (fpInstance) fpInstance.redraw();
+            document.getElementById('logHours').value = '';
+            showToast('¡Tiempo registrado!');
+        });
+
+        function renderManageTasks() {
+            const section = document.getElementById('manageSection').value;
+            const container = document.getElementById('tasksListContainer');
+            container.innerHTML = '';
+            (appData.tasks[section] || []).forEach(task => {
+                container.innerHTML += `
+                    <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <input type="text" value="${task.name}" onchange="updateTaskName('${section}', '${task.id}', this.value)" class="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium dark:text-white px-2 outline-none w-full">
+                        <button onclick="deleteTask('${section}', '${task.id}')" class="text-red-500 hover:text-red-700 p-1 px-2 transition"><i class="fa-solid fa-trash"></i></button>
+                    </div>`;
+            });
+        }
+
+        function updateTaskName(section, taskId, newName) {
+            if(!newName.trim()) return;
+            const task = appData.tasks[section].find(t => t.id === taskId);
+            if(task) { task.name = newName.trim(); saveData(); showToast('Tarea renombrada'); renderChart(); }
+        }
+
+        function deleteTask(section, taskId) {
+            if (appData.logs.some(l => l.taskId === taskId)) { showToast('No se puede borrar, hay horas registradas.', 'error'); return; }
+            appData.tasks[section] = appData.tasks[section].filter(t => t.id !== taskId);
+            saveData(); renderManageTasks(); showToast('Tarea eliminada');
+        }
+
+        document.getElementById('addTaskForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const section = document.getElementById('manageSection').value;
+            const input = document.getElementById('newTaskName');
+            const name = input.value.trim();
+            if(name) {
+                appData.tasks[section].push({ id: generateId(), name: name });
+                saveData(); input.value = ''; renderManageTasks(); showToast('Tarea añadida');
+            }
+        });
+
+        function exportData() {
+            const blob = new Blob([JSON.stringify(appData, null, 2)], { type: "application/json" });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = `LogisTrack_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); showToast('Copia exportada');
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported.tasks && imported.logs) {
+                        appData = imported; saveData(); applyTheme(appData.theme || 'light'); switchView('dashboard'); showToast('Datos restaurados');
+                    } else showToast('Archivo no válido', 'error');
+                } catch (err) { showToast('Error al leer el archivo', 'error'); }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            const container = document.getElementById('toast-container');
+            const confirmToast = document.createElement('div');
+            confirmToast.className = `toast-enter flex flex-col p-4 rounded-lg shadow-lg text-white bg-red-600 min-w-[300px] mb-2`;
+            confirmToast.innerHTML = `
+                <span class="text-sm font-bold mb-2">¿Seguro que quieres borrar TODOS los datos?</span>
+                <div class="flex gap-2 justify-end">
+                    <button id="cancelBtn" class="px-3 py-1 bg-gray-500 rounded text-sm">Cancelar</button>
+                    <button id="confirmBtn" class="px-3 py-1 bg-red-800 rounded text-sm font-bold">Sí, borrar</button>
+                </div>`;
+            container.appendChild(confirmToast);
+            document.getElementById('cancelBtn').onclick = () => confirmToast.remove();
+            document.getElementById('confirmBtn').onclick = () => {
+                localStorage.removeItem('logisTrackData');
+                appData = JSON.parse(JSON.stringify(defaultData)); saveData();
+                renderChart(); renderManageTasks(); if (fpInstance) fpInstance.redraw(); showToast('Datos borrados'); confirmToast.remove();
+            };
+        }
+
+        function updateChartFilter(filter) {
+            currentFilter = filter;
+            renderChart();
+        }
+
+        function initCalendar() {
+            fpInstance = flatpickr("#dashboardDatePicker", {
+                locale: "es",
+                defaultDate: baseDate,
+                dateFormat: "d M Y",
+                disableMobile: true,
+                onChange: function(selectedDates) {
+                    if (selectedDates.length > 0) {
+                        baseDate = selectedDates[0];
+                        renderChart();
+                    }
+                },
+                onDayCreate: function(dObj, dStr, fp, dayElem) {
+                    const dateStr = dayElem.dateObj.getFullYear() + "-" + 
+                                    String(dayElem.dateObj.getMonth() + 1).padStart(2, '0') + "-" + 
+                                    String(dayElem.dateObj.getDate()).padStart(2, '0');
+                    if (appData.logs.some(log => log.date === dateStr)) {
+                        dayElem.classList.add('has-logs');
+                    }
+                }
+            });
+        }
+
+        function getFilteredLogs() {
+            const targetDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+            return appData.logs.filter(log => {
+                const [year, month, day] = log.date.split('-');
+                const logDate = new Date(year, month - 1, day);
+                const diffTime = targetDate - logDate;
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+                
+                if (currentFilter === 'daily') return diffDays === 0;
+                if (currentFilter === 'weekly') {
+                    const dayOfWeek = targetDate.getDay() || 7; 
+                    const startOfWeek = new Date(targetDate); startOfWeek.setDate(targetDate.getDate() - dayOfWeek + 1);
+                    const endOfWeek = new Date(targetDate); endOfWeek.setDate(targetDate.getDate() + (7 - dayOfWeek));
+                    return logDate >= startOfWeek && logDate <= endOfWeek;
+                }
+                if (currentFilter === 'monthly') return logDate.getFullYear() === targetDate.getFullYear() && logDate.getMonth() === targetDate.getMonth();
+                if (currentFilter === '3months') return diffDays >= 0 && diffDays <= 90;
+                if (currentFilter === '6months') return diffDays >= 0 && diffDays <= 180;
+                if (currentFilter === '1year') return diffDays >= 0 && diffDays <= 365;
+                return true;
+            });
+        }
+
+        function renderChart() {
+            const filteredLogs = getFilteredLogs();
+            if (timelineChartInstance) timelineChartInstance.destroy();
+            if (percentChartInstance) percentChartInstance.destroy();
+            if (tasksChartInstance) tasksChartInstance.destroy();
+
+            const noDataMsg = document.getElementById('no-data-msg');
+            const chartsContainer = document.getElementById('charts-container');
+            const totalHoursBadge = document.getElementById('total-hours-badge');
+
+            if (filteredLogs.length === 0) {
+                noDataMsg.classList.remove('hidden'); chartsContainer.classList.add('hidden');
+                if(totalHoursBadge) totalHoursBadge.innerText = "0";
+                return;
+            }
+
+            noDataMsg.classList.add('hidden'); chartsContainer.classList.remove('hidden');
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+            Chart.defaults.color = isDark ? '#94a3b8' : '#64748b';
+            Chart.defaults.font.family = "'Inter', sans-serif";
+
+            const totalHours = filteredLogs.reduce((sum, log) => sum + log.hours, 0);
+            if(totalHoursBadge) totalHoursBadge.innerText = totalHours.toFixed(1);
+
+            // 1. Timeline Chart
+            const timelineData = {};
+            const sections = Object.keys(appData.tasks);
+            filteredLogs.sort((a,b) => new Date(a.date) - new Date(b.date));
+            filteredLogs.forEach(log => {
+                const key = (['daily', 'weekly', 'monthly'].includes(currentFilter)) ? log.date : log.date.substring(0, 7);
+                if (!timelineData[key]) { timelineData[key] = {}; sections.forEach(s => timelineData[key][s] = 0); }
+                timelineData[key][log.section] += log.hours;
+            });
+
+            timelineChartInstance = new Chart(document.getElementById('timelineChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(timelineData).map(k => {
+                        if (k.length === 10) { const d = new Date(k); return `${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`; }
+                        const [y, m] = k.split('-'); return `${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(m)-1]} '${y.slice(2)}`;
+                    }),
+                    datasets: sections.map(sec => ({ label: sec, data: Object.keys(timelineData).map(k => timelineData[k][sec]), backgroundColor: sectionColors[sec], borderRadius: 4 }))
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}h` } } },
+                    scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, grid: { color: gridColor }, beginAtZero: true } }
+                }
+            });
+
+            // 2. Percent Donut
+            const sectionTotals = {}; sections.forEach(s => sectionTotals[s] = 0);
+            filteredLogs.forEach(log => sectionTotals[log.section] += log.hours);
+            const activeSections = sections.filter(s => sectionTotals[s] > 0);
+
+            percentChartInstance = new Chart(document.getElementById('percentChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: activeSections,
+                    datasets: [{ data: activeSections.map(s => sectionTotals[s]), backgroundColor: activeSections.map(s => sectionColors[s]), borderWidth: isDark ? 2 : 0, borderColor: isDark ? '#0f172a' : '#fff' }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '65%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+                        tooltip: { callbacks: { label: ctx => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0); return ` ${ctx.label}: ${ctx.raw}h (${((ctx.raw/t)*100).toFixed(1)}%)`; } } }
+                    }
+                }
+            });
+
+            // 3. Tasks Vertical Bar
+            const taskTotals = {};
+            const taskDictionary = {}; sections.forEach(s => appData.tasks[s].forEach(t => taskDictionary[t.id] = { name: t.name, section: s }));
+            filteredLogs.forEach(log => {
+                if (!taskTotals[log.taskId]) { const i = taskDictionary[log.taskId] || { name: 'Eliminada', section: log.section }; taskTotals[log.taskId] = { name: i.name, section: i.section, hours: 0 }; }
+                taskTotals[log.taskId].hours += log.hours;
+            });
+
+            const sortedTasks = Object.values(taskTotals).filter(t => t.hours > 0).sort((a,b) => b.hours - a.hours);
+            const tbody = document.getElementById('dynamic-table-body');
+            if (tbody) {
+                tbody.innerHTML = '';
+                sortedTasks.forEach(t => tbody.innerHTML += `<tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"><td class="px-4 py-3 text-gray-800 dark:text-gray-200">${t.name} <span class="text-xs text-gray-500">(${t.section})</span></td><td class="px-4 py-3 text-right font-semibold text-gray-800 dark:text-gray-200">${t.hours.toFixed(1)}h</td></tr>`);
+            }
+
+            tasksChartInstance = new Chart(document.getElementById('tasksChart'), {
+                type: 'bar',
+                data: {
+                    labels: sortedTasks.map(t => `${t.name} (${t.section})`),
+                    datasets: [{ label: 'Horas', data: sortedTasks.map(t => t.hours), backgroundColor: sortedTasks.map(t => sectionColors[t.section] || '#888'), borderRadius: 4 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} horas` } } },
+                    scales: { y: { grid: { color: gridColor }, beginAtZero: true }, x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } } }
+                }
+            });
+        }
+
+        function init() {
+            initCalendar(); 
+            applyTheme(appData.theme || 'light');
+            const filterSelect = document.getElementById('chartFilterSelect');
+            if (filterSelect) filterSelect.value = 'daily';
+            updateChartFilter('daily'); 
+            switchView('dashboard');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
