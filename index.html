@@ -39,6 +39,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+    <!-- html2pdf para exportar a PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -124,9 +126,14 @@
                     <input type="text" id="dashboardDatePicker" class="w-full pl-10 pr-4 py-2 bg-white dark:bg-corp-800 border border-gray-200 dark:border-gray-700 rounded-xl font-bold text-gray-800 dark:text-white shadow-sm cursor-pointer focus:outline-none focus:border-logis-500 focus:ring-2 focus:ring-logis-500 transition" placeholder="Seleccionar fecha...">
                 </div>
                 
-                <!-- Filtros Dropdown -->
-                <div class="w-full sm:w-48 z-10">
-                    <div class="relative">
+                <!-- Botón PDF y Filtros Dropdown -->
+                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto z-10">
+                    <!-- Botón Descargar PDF -->
+                    <button onclick="downloadPDF()" class="w-full sm:w-auto bg-white dark:bg-corp-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 font-medium py-2 px-4 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-pdf text-red-500"></i> <span class="hidden sm:inline">PDF</span>
+                    </button>
+                    
+                    <div class="w-full sm:w-48 relative">
                         <i class="fa-solid fa-filter absolute left-3 top-[11px] text-gray-400 dark:text-gray-500 z-10 pointer-events-none text-sm"></i>
                         <select id="chartFilterSelect" onchange="updateChartFilter(this.value)" class="w-full pl-9 pr-8 py-2 bg-white dark:bg-corp-800 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-800 dark:text-white shadow-sm cursor-pointer focus:outline-none focus:border-logis-500 focus:ring-2 focus:ring-logis-500 transition appearance-none">
                             <option value="daily">Diario</option>
@@ -348,8 +355,8 @@
         };
 
         const specificTasks = {
-            "PAQUETERIA": ["Destinos", "Inducción", "Evacuar"],
-            "CONFECCIÓN": ["Encajar", "Descargar camión confección", "Cadena", "Pick", "Roturas", "Msr", "Limpieza", "Inducción", "Encajado", "Devoluciones carga camión", "Bloques en cadena", "Rechazo"],
+            "PAQUETERIA": ["Destinos", "Inducción", "Evacuar", "Rechazo"],
+            "CONFECCIÓN": ["Encajar", "Descargar camión confección", "Cadena", "Pick", "Roturas", "Msr", "Limpieza", "Inducción", "Encajado", "Devoluciones carga camión", "Bloques en cadena", "Rechazo", "Reciclado"],
             "EXPEDICIONES": ["Rampas", "Planchas", "Incidencias", "Perfumería", "Cargas"],
             "MUESTRAS": ["Gestión de muestras", "Preparación"],
             "DEVOLUCIONES": ["Gestión devoluciones"]
@@ -489,8 +496,26 @@
 
         function deleteTask(section, taskId) {
             if (appData.logs.some(l => l.taskId === taskId)) { showToast('No se puede borrar, hay horas registradas.', 'error'); return; }
-            appData.tasks[section] = appData.tasks[section].filter(t => t.id !== taskId);
-            saveData(); renderManageTasks(); showToast('Tarea eliminada');
+            
+            const container = document.getElementById('toast-container');
+            const confirmToast = document.createElement('div');
+            confirmToast.className = `toast-enter flex flex-col p-4 rounded-lg shadow-lg text-white bg-red-600 min-w-[300px] mb-2 z-50`;
+            confirmToast.innerHTML = `
+                <span class="text-sm font-bold mb-2">¿Seguro que quieres borrar esta tarea?</span>
+                <div class="flex gap-2 justify-end mt-2">
+                    <button id="cancelTaskDelBtn-${taskId}" class="px-3 py-1.5 bg-gray-500 hover:bg-gray-400 rounded-md text-sm transition font-medium shadow-sm">Cancelar</button>
+                    <button id="confirmTaskDelBtn-${taskId}" class="px-3 py-1.5 bg-red-900 hover:bg-black rounded-md text-sm font-bold transition shadow-sm">Sí, borrar</button>
+                </div>`;
+            container.appendChild(confirmToast);
+            
+            document.getElementById(`cancelTaskDelBtn-${taskId}`).onclick = () => confirmToast.remove();
+            document.getElementById(`confirmTaskDelBtn-${taskId}`).onclick = () => {
+                appData.tasks[section] = appData.tasks[section].filter(t => t.id !== taskId);
+                saveData(); 
+                renderManageTasks(); 
+                showToast('Tarea eliminada');
+                confirmToast.remove();
+            };
         }
 
         document.getElementById('addTaskForm').addEventListener('submit', (e) => {
@@ -801,6 +826,56 @@
             if (fpInstance) fpInstance.redraw();
             renderChart();
             showToast('Registro actualizado');
+        }
+
+        async function downloadPDF() {
+            const noData = document.getElementById('no-data-msg');
+            if (!noData.classList.contains('hidden')) {
+                showToast('No hay datos para exportar a PDF', 'error');
+                return;
+            }
+
+            const element = document.getElementById('charts-container');
+            
+            const filterNames = {
+                'daily': 'Diario',
+                'weekly': 'Semanal',
+                'monthly': 'Mensual',
+                '3months': '3_Meses',
+                '6months': '6_Meses',
+                '1year': '1_Año'
+            };
+            
+            const dateStr = fpInstance ? fpInstance.formatDate(baseDate, "d/m/Y") : new Date().toLocaleDateString();
+            const filterStr = filterNames[currentFilter] || currentFilter;
+            const filename = `Control_Tareas_${filterStr}_${dateStr.replace(/\//g, '-')}.pdf`;
+
+            // Añadir un título temporal de cabecera solo para el PDF
+            const header = document.createElement('h2');
+            header.className = 'text-xl font-bold text-gray-800 dark:text-white mb-6 text-center pdf-temp-header';
+            header.innerHTML = `Reporte de Puestos y Tareas<br><span class="text-sm font-normal text-gray-500">Filtro: ${filterStr.replace('_', ' ')} | Fecha base: ${dateStr}</span>`;
+            element.insertBefore(header, element.firstChild);
+
+            const opt = {
+                margin:       [0.4, 0.4, 0.4, 0.4],
+                filename:     filename,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 }, // windowWidth evita que se vea diseño móvil en PC
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+            
+            showToast('Generando documento PDF...');
+            
+            try {
+                await html2pdf().set(opt).from(element).save();
+                showToast('PDF descargado correctamente');
+            } catch (err) {
+                showToast('Error al generar PDF', 'error');
+                console.error(err);
+            } finally {
+                // Limpiar el título temporal tras hacer la foto
+                header.remove();
+            }
         }
 
         function init() {
