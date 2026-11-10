@@ -149,24 +149,23 @@
             <!-- Gráficos -->
             <div id="charts-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                <!-- Evolución en el tiempo -->
-                <div class="lg:col-span-2 bg-white dark:bg-corp-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Evolución del Tiempo (Horas)</h3>
-                        <span class="bg-logis-100 text-logis-600 dark:bg-logis-900/50 dark:text-logis-400 font-bold px-3 py-1 rounded-full text-xs border border-logis-200 dark:border-logis-800">
-                            Total periodo: <span id="total-hours-badge">0</span>h
-                        </span>
-                    </div>
-                    <div class="relative h-[250px] sm:h-[300px] w-full">
-                        <canvas id="timelineChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Porcentajes (Donut) -->
-                <div class="bg-white dark:bg-corp-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <h3 class="text-sm font-semibold mb-4 text-gray-700 dark:text-gray-300">Distribución por Sección (%)</h3>
-                    <div class="relative h-[250px] sm:h-[300px] w-full flex justify-center">
-                        <canvas id="percentChart"></canvas>
+                <!-- Historial de Registros (MOVIDO AL PRINCIPIO) -->
+                <div class="lg:col-span-3 bg-white dark:bg-corp-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h3 class="text-sm font-semibold mb-4 text-gray-700 dark:text-gray-300">Registros del Periodo</h3>
+                    <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-800/80 dark:text-gray-400">
+                                <tr>
+                                    <th class="px-4 py-3">Fecha</th>
+                                    <th class="px-4 py-3">Sección / Tarea</th>
+                                    <th class="px-4 py-3 text-right">Horas</th>
+                                    <th class="px-4 py-3 text-center w-24">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-table-body" class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                                <!-- Generado por JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -190,6 +189,27 @@
                                 <!-- Generado por JS -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Evolución en el tiempo -->
+                <div class="lg:col-span-2 bg-white dark:bg-corp-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Evolución del Tiempo (Horas)</h3>
+                        <span class="bg-logis-100 text-logis-600 dark:bg-logis-900/50 dark:text-logis-400 font-bold px-3 py-1 rounded-full text-xs border border-logis-200 dark:border-logis-800">
+                            Total periodo: <span id="total-hours-badge">0</span>h
+                        </span>
+                    </div>
+                    <div class="relative h-[250px] sm:h-[300px] w-full">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Porcentajes (Donut) -->
+                <div class="bg-white dark:bg-corp-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h3 class="text-sm font-semibold mb-4 text-gray-700 dark:text-gray-300">Distribución por Sección (%)</h3>
+                    <div class="relative h-[250px] sm:h-[300px] w-full flex justify-center">
+                        <canvas id="percentChart"></canvas>
                     </div>
                 </div>
 
@@ -282,6 +302,41 @@
 
     <!-- Toast Container -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Modal de Edición de Registros -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-corp-800 rounded-2xl p-6 w-full max-w-md shadow-xl border border-gray-200 dark:border-gray-700">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Editar Registro</h3>
+            <form id="editLogForm" onsubmit="saveEditLog(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha</label>
+                    <input type="date" id="editLogDate" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 outline-none focus:border-logis-500 focus:ring-1 focus:ring-logis-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sección</label>
+                    <select id="editLogSection" onchange="renderEditTaskOptions()" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 outline-none focus:border-logis-500 focus:ring-1 focus:ring-logis-500">
+                        <option value="PAQUETERIA">Paquetería</option>
+                        <option value="CONFECCIÓN">Confección</option>
+                        <option value="EXPEDICIONES">Expediciones</option>
+                        <option value="MUESTRAS">Muestras</option>
+                        <option value="DEVOLUCIONES">Devoluciones</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tarea</label>
+                    <select id="editLogTask" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 outline-none focus:border-logis-500 focus:ring-1 focus:ring-logis-500"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Horas</label>
+                    <input type="number" id="editLogHours" step="0.25" min="0.25" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 outline-none focus:border-logis-500 focus:ring-1 focus:ring-logis-500">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition font-medium">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-logis-500 hover:bg-logis-600 text-white rounded-lg transition font-medium shadow-sm">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         const APP_VERSION = '1.2';
@@ -559,6 +614,8 @@
             }
 
             noDataMsg.classList.add('hidden'); chartsContainer.classList.remove('hidden');
+            
+            renderLogsTable(filteredLogs);
 
             const isDark = document.documentElement.classList.contains('dark');
             const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
@@ -641,6 +698,109 @@
                     scales: { y: { grid: { color: gridColor }, beginAtZero: true }, x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } } }
                 }
             });
+        }
+
+        let currentEditLogId = null;
+
+        function renderLogsTable(logs) {
+            const tbody = document.getElementById('logs-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            const sortedLogs = [...logs].sort((a,b) => new Date(b.date) - new Date(a.date));
+            
+            sortedLogs.forEach(log => {
+                const taskSection = appData.tasks[log.section] || [];
+                const task = taskSection.find(t => t.id === log.taskId);
+                const taskName = task ? task.name : 'Tarea eliminada';
+                
+                const [y, m, d] = log.date.split('-');
+                const formattedDate = `${d}/${m}/${y}`;
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition border-b border-gray-100 dark:border-gray-700 last:border-0">
+                        <td class="px-4 py-3 text-gray-800 dark:text-gray-200 whitespace-nowrap">${formattedDate}</td>
+                        <td class="px-4 py-3 text-gray-800 dark:text-gray-200">${taskName} <span class="text-xs text-gray-500">(${log.section})</span></td>
+                        <td class="px-4 py-3 text-right font-semibold text-gray-800 dark:text-gray-200">${log.hours.toFixed(1)}h</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="openEditModal('${log.id}')" class="text-blue-500 hover:text-blue-600 mx-2 transition" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteLog('${log.id}')" class="text-red-500 hover:text-red-600 mx-2 transition" title="Borrar"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function deleteLog(logId) {
+            const container = document.getElementById('toast-container');
+            const confirmToast = document.createElement('div');
+            confirmToast.className = `toast-enter flex flex-col p-4 rounded-lg shadow-lg text-white bg-red-600 min-w-[300px] mb-2 z-50`;
+            confirmToast.innerHTML = `
+                <span class="text-sm font-bold mb-2">¿Seguro que quieres borrar este registro?</span>
+                <div class="flex gap-2 justify-end mt-2">
+                    <button id="cancelDelBtn-${logId}" class="px-3 py-1.5 bg-gray-500 hover:bg-gray-400 rounded-md text-sm transition font-medium shadow-sm">Cancelar</button>
+                    <button id="confirmDelBtn-${logId}" class="px-3 py-1.5 bg-red-900 hover:bg-black rounded-md text-sm font-bold transition shadow-sm">Sí, borrar</button>
+                </div>`;
+            container.appendChild(confirmToast);
+            
+            document.getElementById(`cancelDelBtn-${logId}`).onclick = () => confirmToast.remove();
+            document.getElementById(`confirmDelBtn-${logId}`).onclick = () => {
+                appData.logs = appData.logs.filter(l => l.id !== logId);
+                saveData();
+                if (fpInstance) fpInstance.redraw();
+                renderChart();
+                showToast('Registro eliminado');
+                confirmToast.remove();
+            };
+        }
+
+        function openEditModal(logId) {
+            const log = appData.logs.find(l => l.id === logId);
+            if (!log) return;
+            currentEditLogId = logId;
+            
+            document.getElementById('editLogDate').value = log.date;
+            document.getElementById('editLogSection').value = log.section;
+            renderEditTaskOptions(); 
+            document.getElementById('editLogTask').value = log.taskId;
+            document.getElementById('editLogHours').value = log.hours;
+            
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            currentEditLogId = null;
+        }
+
+        function renderEditTaskOptions() {
+            const section = document.getElementById('editLogSection').value;
+            const taskSelect = document.getElementById('editLogTask');
+            taskSelect.innerHTML = '<option value="">Selecciona una tarea...</option>';
+            if (!section) { taskSelect.disabled = true; return; }
+            taskSelect.disabled = false;
+            (appData.tasks[section] || []).forEach(task => {
+                const opt = document.createElement('option');
+                opt.value = task.id; opt.textContent = task.name;
+                taskSelect.appendChild(opt);
+            });
+        }
+
+        function saveEditLog(e) {
+            e.preventDefault();
+            const logIndex = appData.logs.findIndex(l => l.id === currentEditLogId);
+            if(logIndex === -1) return;
+            
+            appData.logs[logIndex].date = document.getElementById('editLogDate').value;
+            appData.logs[logIndex].section = document.getElementById('editLogSection').value;
+            appData.logs[logIndex].taskId = document.getElementById('editLogTask').value;
+            appData.logs[logIndex].hours = parseFloat(document.getElementById('editLogHours').value);
+            
+            saveData();
+            closeEditModal();
+            if (fpInstance) fpInstance.redraw();
+            renderChart();
+            showToast('Registro actualizado');
         }
 
         function init() {
